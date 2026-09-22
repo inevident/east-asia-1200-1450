@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>East Asia, 1200–1450 · A PIRATES Flight</title>
+    <meta name="description" content="AP World History Unit 1 project: East Asia c. 1200–1450 through the PIRATES framework, told as a scroll-driven flight across a 3D map with landmarks modeled in Blender." />
+    <meta name="author" content="Ryan Lim" />
+    <meta name="theme-color" content="#e9e0cd" />
+    <meta property="og:title" content="East Asia, 1200–1450 · A PIRATES Flight" />
+    <meta property="og:description" content="Continuity at home, connection abroad: a scroll-driven 3D map tour of Song, Yuan and early Ming China, Korea, Japan and Vietnam." />
+    <meta property="og:image" content="scenes/hero-1600.webp" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Inter:wght@500;600;700&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Serif+TC:wght@700;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="preload" as="image" href="scenes/hero-1600.webp" media="(max-width: 1600px)" />
+    <link rel="preload" as="image" href="scenes/hero-2560.webp" media="(min-width: 1601px)" />
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+      <filter id="seal-rough" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="n" />
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="1.6" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </svg>
+
+    <a class="skip" href="#prologue">Skip to content</a>
+
+    <!-- the 3D map sits behind the whole story -->
+    <div class="stage" aria-hidden="true">
+      <canvas id="map"></canvas>
+      <div id="labels" class="labels"></div>
+      <div class="veil"></div>
+    </div>
+
+    <div class="loader" role="status" aria-live="polite">
+      <span class="loader-seal seal">圖</span>
+      <span class="loader-text">Unrolling the map…</span>
+      <span class="loader-bar"><i></i></span>
+    </div>
+
+    <div class="progress" aria-hidden="true"><span></span></div>
+
+    <nav class="rail" aria-label="PIRATES chapters">
+      <a class="rail-home" href="#top" aria-label="Back to the top"><span class="seal seal--sm">東亞</span></a>
+      <ol id="rail-list"></ol>
+    </nav>
+
+    <main id="story"></main>
+
+    <div class="after" id="after">
+      <section id="timeline" class="after-sec">
+        <div class="wrap">
+          <p class="label">Timeline</p>
+          <h2 class="display">Who ruled, and when</h2>
+          <div class="dyn-chart dyn-chart--full" id="dynasty-chart-full"></div>
+          <p class="small muted">Bars show ruling dynasties within the 1200–1450 window.</p>
+          <h3 class="display display--sm">Key dates, 1206 → 1443</h3>
+          <ol class="keydates" id="keydates"></ol>
+        </div>
+      </section>
+
+      <section id="notes" class="after-sec">
+        <div class="wrap narrow">
+          <p class="label">Sources</p>
+          <h2 class="display">Notes</h2>
+          <ol class="endnotes" id="endnotes"></ol>
+          <h2 class="display" id="bibliography">Bibliography</h2>
+          <ul class="bibliography" id="bib"></ul>
+        </div>
+      </section>
+
+      <footer class="colophon">
+        <div class="wrap">
+          <p><span class="seal seal--sm">林</span> <strong>East Asia, c. 1200–1450</strong> · Ryan Lim · AP World History: Modern, Unit 1 Project</p>
+          <p class="muted">
+            The map is a 3D relief built from Natural Earth coastlines with painted, exaggerated terrain in the blue-green style of Song landscape painting. The landmarks and ships are miniatures modeled procedurally in Blender, and the chapter paintings were rendered in Blender with Cycles. They are artist’s reconstructions that illustrate the history described here; sizes are exaggerated so they can be seen at map scale. Citations follow <i>The Chicago Manual of Style</i> (notes and bibliography).
+          </p>
+        </div>
+      </footer>
+    </div>
+
+    <div class="fn-pop" id="fn-pop" role="tooltip" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
