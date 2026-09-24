@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>East Asia, 1200–1450 · A PIRATES Journey</title>
+    <meta name="description" content="AP World History Unit 1 project: East Asia c. 1200–1450 through the PIRATES framework — Song, Yuan and early Ming China, Korea, Japan and Vietnam — with 3D scenes built and rendered in Blender." />
+    <meta name="author" content="Ryan Lim" />
+    <meta name="theme-color" content="#16130f" />
+    <meta property="og:title" content="East Asia, 1200–1450 · A PIRATES Journey" />
+    <meta property="og:description" content="Continuity at home, connection abroad: an interactive AP World History study of East Asia with Blender-rendered 3D scenes." />
+    <meta property="og:image" content="scenes/hero-1600.webp" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Inter:wght@500;600;700&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Serif+TC:wght@700;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="preload" as="image" href="scenes/hero-1600.webp" media="(max-width: 1600px)" />
+    <link rel="preload" as="image" href="scenes/hero-2560.webp" media="(min-width: 1601px)" />
+  </head>
+  <body>
+    <!-- rough-edged 'stamped seal' filter used by every seal on the page -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+      <filter id="seal-rough" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="n" />
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="1.6" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+      <filter id="ink-bleed">
+        <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="3" />
+        <feDisplacementMap in="SourceGraphic" scale="6" />
+      </filter>
+    </svg>
+
+    <a class="skip" href="#prologue">Skip to content</a>
+    <div class="progress" aria-hidden="true"><span></span></div>
+
+    <nav class="rail" aria-label="PIRATES categories">
+      <a class="rail-home" href="#top" aria-label="Back to top"><span class="seal seal--sm">東亞</span></a>
+      <ol id="rail-list"></ol>
+    </nav>
+
+    <header id="top" class="hero scene scene--hero" data-scene="hero">
+      <img class="scene-img" alt="Dawn mist over a wide river: a seven-storey octagonal pagoda on a wooded hill at right, junks with rust-coloured sails on the water, and layered mountains fading into golden haze." fetchpriority="high"
+        srcset="scenes/hero-960.webp 960w, scenes/hero-1600.webp 1600w, scenes/hero-2560.webp 2560w" sizes="100vw" src="scenes/hero-1600.webp" />
+      <canvas class="scene-gl" aria-hidden="true"></canvas>
+      <div class="mist" aria-hidden="true"></div>
+      <div class="hero-inner">
+        <p class="kicker">AP World History: Modern · Unit 1 · The Global Tapestry</p>
+        <h1 class="hero-title">
+          <span class="hero-title__main">East Asia</span>
+          <span class="hero-title__years">c. 1200 – 1450</span>
+        </h1>
+        <p class="hero-sub">Song, Yuan &amp; early Ming China · Goryeo &amp; Joseon Korea · Kamakura &amp; Muromachi Japan · Đại Việt. A journey through <strong>P·I·R·A·T·E·S</strong>: continuity at home, connection abroad.</p>
+        <p class="hero-byline"><span class="seal seal--sm">林</span> Ryan Lim</p>
+        <a class="scroll-cue" href="#prologue"><span>Unroll the scroll</span><i aria-hidden="true"></i></a>
+      </div>
+      <div class="hero-vertical" aria-hidden="true">千里江山</div>
+      <p class="scene-caption">Artist’s reconstruction · Lin’an (Hangzhou), capital of the Southern Song, at dawn: a pagoda modeled on Song octagonal towers above the Qiantang River, with seagoing junks bound for the Indian Ocean. Rendered in Blender.</p>
+    </header>
+
+    <main id="main">
+      <section id="prologue" class="paper prologue">
+        <div class="wrap prologue-grid">
+          <div class="prologue-text">
+            <p class="label">Prologue · Thesis</p>
+            <h2 class="display">A region that changed the world by staying itself</h2>
+            <p class="lede" id="thesis"></p>
+            <div class="howto">
+              <h3>How to read this scroll</h3>
+              <ul>
+                <li><span class="seal seal--xs">P</span> Seven chapters follow the PIRATES framework, each opening on a 3D scene built in Blender. Move your cursor or tilt to look around it.</li>
+                <li><span class="chip chip--demo">Global connection</span> Every development ends with an analysis of how it links to wider Afro-Eurasian patterns such as trade networks, state building and diffusion.</li>
+                <li><sup class="fn-demo">12</sup> Numbered notes are Chicago-style citations. Hover or tap for the citation; full notes and the bibliography are at the end.</li>
+              </ul>
+            </div>
+          </div>
+          <aside class="region-card" aria-labelledby="dyn-title">
+            <p class="label" id="dyn-title">The region at a glance, 1200–1450</p>
+            <div id="dynasty-chart" class="dynasty-chart"></div>
+            <p class="small muted">Bars show ruling dynasties within the 1200–1450 window. Striped bars mark foreign conquest or occupation.</p>
+          </aside>
+        </div>
+      </section>
+
+      <div id="chapters"></div>
+
+      <section id="connections" class="dark connections">
+        <div class="wrap">
+          <p class="label label--light">Key connections</p>
+          <h2 class="display display--light">East Asia in the Afro-Eurasian web</h2>
+          <p class="lede lede--light">Every PIRATES category above runs along these routes. Toggle the layers to see how rice, cobalt, astronomy, paper money, gunpowder, faith and plague moved into and out of East Asia.</p>
+          <div class="map-shell">
+            <div class="map-controls" id="map-controls" role="group" aria-label="Map layers"></div>
+            <div class="map-frame">
+              <svg id="map" role="img" aria-label="Map of Afro-Eurasia showing the Silk Roads, Indian Ocean routes, Zheng He's voyages, the Grand Canal, diffusion of goods and ideas, and Mongol campaigns."></svg>
+              <div class="map-tip" id="map-tip" hidden></div>
+            </div>
+            <ul class="map-legend" id="map-legend"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="matrix" class="paper matrix-section">
+        <div class="wrap">
+          <p class="label">Synthesis</p>
+          <h2 class="display">The connections matrix</h2>
+          <p class="lede">One table, seven categories: what developed, which global process it belongs to, how it linked beyond East Asia, and whether it represents continuity or change.</p>
+          <div class="table-scroll">
+            <table class="matrix" id="matrix-table">
+              <thead>
+                <tr><th scope="col">PIRATES</th><th scope="col">Key developments</th><th scope="col">Global process</th><th scope="col">Link beyond East Asia</th><th scope="col">Continuity / change</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="timeline" class="paper timeline-section">
+        <div class="wrap">
+          <p class="label">Key dates</p>
+          <h2 class="display">1206 → 1443</h2>
+          <ol class="keydates" id="keydates"></ol>
+        </div>
+      </section>
+
+      <section id="conclusion" class="dark conclusion">
+        <div class="wrap narrow">
+          <p class="label label--light">Conclusion</p>
+          <h2 class="display display--light">Rolling up the scroll</h2>
+          <p class="lede lede--light" id="conclusion-text"></p>
+          <div class="seal-row" aria-hidden="true"><span class="seal">終</span></div>
+        </div>
+      </section>
+
+      <section id="notes" class="paper notes-section">
+        <div class="wrap narrow">
+          <p class="label">Sources</p>
+          <h2 class="display">Notes</h2>
+          <ol class="endnotes" id="endnotes"></ol>
+          <h2 class="display" id="bibliography">Bibliography</h2>
+          <ul class="bibliography" id="bib"></ul>
+        </div>
+      </section>
+    </main>
+
+    <footer class="colophon dark">
+      <div class="wrap">
+        <p><span class="seal seal--sm">林</span> <strong>East Asia, c. 1200–1450</strong> · Ryan Lim · AP World History: Modern, Unit 1 Project</p>
+        <p class="muted">All scenes are artist’s reconstructions, modeled procedurally in Blender 5.2 and rendered with Cycles; the rotatable artifacts are exported from the same scenes. They illustrate the history described here; they are not photographs. Citations follow <i>The Chicago Manual of Style</i> (notes and bibliography).</p>
+      </div>
+    </footer>
+
+    <div class="fn-pop" id="fn-pop" role="tooltip" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
