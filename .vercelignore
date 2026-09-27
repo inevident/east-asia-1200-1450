@@ -1,0 +1,11 @@
+# Only the website is deployed; Blender sources, renders and build tools stay local
+blender/
+legacy-v1/
+tools/
+dist/
+.snaps/
+.claude/
+*.blend
+*.blend1
+.env*
+.vercel/
