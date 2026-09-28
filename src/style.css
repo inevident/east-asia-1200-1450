@@ -504,11 +504,14 @@ strong {
   height: var(--step-h, auto);
   pointer-events: none;
 }
+/* the gap before the card is padding, not a margin, so it cannot collapse out of the section */
+.step:not(.step--hero) {
+  padding-top: var(--enter, 30vh);
+}
 .step .card {
   pointer-events: auto;
   position: sticky;
   top: var(--stick, 12vh);
-  margin-top: var(--enter, 45vh);
 }
 
 .card {
@@ -1147,8 +1150,6 @@ strong {
 /* ----------------------------------------------------------------- hero */
 .step--hero {
   min-height: 150vh;
-  align-items: flex-start;
-  padding: 0;
 }
 .hero-paint {
   position: fixed;
@@ -1451,7 +1452,6 @@ strong {
   .step .card {
     position: relative;
     top: auto;
-    margin-top: 0;
   }
   .card {
     padding: 20px 18px 18px;

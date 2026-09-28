@@ -49,6 +49,8 @@ export class Director {
   keys: Key[] = [];
   /** scroll range in which each stop's animation plays */
   pins: [number, number][] = [];
+  /** per stop: the reference timeline's segment boundaries and the actual (flight-length-weighted) ones */
+  private tl: { ref: number[]; act: number[] }[] = [];
   labels: Labels;
   routes: Routes;
   cur!: CamState;
@@ -87,34 +89,103 @@ export class Director {
     new ResizeObserver(() => this.layout()).observe(document.body);
   }
 
-  /** Scroll position that shows a stop with its animation finished and its card locked in view. */
+  /** Scroll position for a link into a stop: its card at the top of the screen, its animation about to begin. */
   landing(id: string): number | null {
     const i = this.steps.findIndex((s) => s.id === id);
     if (i < 0) return null;
     this.layout();
-    return this.pins[i][1];
+    const el = this.sections[i];
+    const stick = parseFloat(el.style.getPropertyValue("--stick"));
+    const enter = parseFloat(el.style.getPropertyValue("--enter"));
+    if (Number.isNaN(stick) || Number.isNaN(enter)) return this.pins[i][1];
+    const top = el.getBoundingClientRect().top + scrollY;
+    return top + enter - Math.max(stick, innerHeight * 0.08);
   }
 
-  /** Size each stop's section around its card, then place the camera keys inside each stop's animation range. */
+  /**
+   * Reference timeline of a stop's locked stretch (0..1): a flight to each place, a rest at it, and a longer dwell
+   * at the last one, every flight the same length. Route, arc and mover timings in steps.ts are written against
+   * this; the real stretch gives each flight scroll distance in proportion to its length, and progress is mapped back.
+   */
+  static timeline(n: number): { arrive: number; leave: number }[] {
+    return Director.plan(new Array<number>(n).fill(1), 1, 0.4, 0.5).map(({ arrive, leave }) => ({ arrive, leave }));
+  }
+
+  /** Lay flights (in units of `px` per unit of length, clamped) and rests along a stop's stretch. */
+  static plan(lens: number[], px: number, rest: number, dwell: number, min = 0, max = Infinity) {
+    const n = lens.length;
+    let t = 0;
+    const out: { arrive: number; leave: number }[] = [];
+    lens.forEach((L, j) => {
+      t += Math.min(Math.max(L * px, min), max);
+      const arrive = t;
+      t += j < n - 1 ? rest : dwell;
+      out.push({ arrive, leave: t });
+    });
+    return out.map(({ arrive, leave }) => ({ arrive: arrive / t, leave: leave / t, total: t }));
+  }
+
+  /** Progress through a stop's stretch (0..1), expressed on the reference timeline that steps.ts timings use. */
+  toRef(i: number, p: number): number {
+    const t = this.tl[i];
+    if (!t) return p;
+    const { ref, act } = t;
+    let k = 0;
+    while (k < act.length - 2 && p > act[k + 1]) k++;
+    const span = act[k + 1] - act[k];
+    return span > 0 ? ref[k] + ((ref[k + 1] - ref[k]) * (p - act[k])) / span : ref[k];
+  }
+
+  private camTarget(c: Cam): THREE.Vector3 {
+    const pos = this.proj.place(c.at);
+    if (c.off) {
+      pos.x += c.off[0];
+      pos.z -= c.off[1];
+      pos.y = Math.max(this.world.heightAt(pos.x, pos.z), 0);
+    }
+    return pos;
+  }
+
+  /** Size each stop's section around its card, then place the camera keys inside each stop's locked stretch. */
   layout() {
     const H = innerHeight;
     const mobile = innerWidth <= 760;
     const cards = this.sections.map((el) => el.querySelector(".card") as HTMLElement | null);
+    // 0) camera targets, how much motion each flight holds, and each stop's stretch: long flights get more scroll
+    const targets = this.steps.map((s) => s.cams.map((c) => this.camTarget(c)));
+    let pPos: THREE.Vector3 | null = null;
+    let pD = 1;
+    const plans = this.steps.map((s, i) => {
+      const lens = s.cams.map((c, j) => {
+        const pos = targets[i][j];
+        const L = pPos ? flightLength(pD, c.d, pPos.distanceTo(pos)) : 0;
+        pPos = pos;
+        pD = c.d;
+        return L;
+      });
+      const plan = Director.plan(lens, 240, 0.2 * H, 0.35 * H, 0.3 * H, 1.2 * H);
+      const ref = Director.timeline(s.cams.length);
+      const bounds = (t: { arrive: number; leave: number }[]) => [0, ...t.flatMap((x) => [x.arrive, x.leave])];
+      this.tl[i] = { ref: bounds(ref), act: bounds(plan) };
+      return plan;
+    });
     // 1) sizes: [gap] [card] [locked stretch that plays the animation]
     this.steps.forEach((s, i) => {
       const el = this.sections[i];
       const card = cards[i];
       if (!card || s.kind === "hero") return;
-      const anim = Math.round(H * (0.75 * s.cams.length + 0.35));
+      const anim = Math.round(plans[i][0]?.total ?? H);
       if (mobile) {
-        setVar(el, "--gap", `${anim + Math.round(H * 0.55)}px`);
+        setVar(el, "--gap", `${anim + Math.round(H * 0.5)}px`);
+        for (const v of ["--stick", "--enter", "--step-h"]) el.style.removeProperty(v);
         return;
       }
+      el.style.removeProperty("--gap");
       const cardH = card.offsetHeight;
       const margin = H * 0.08;
       // short cards lock a little above centre; tall ones lock once their last line is on screen
       const stick = cardH <= H - 2 * margin ? Math.max(margin, (H - cardH) * 0.42) : H - cardH - margin;
-      const enter = Math.round(H * 0.45);
+      const enter = Math.round(H * 0.3);
       setVar(el, "--stick", `${Math.round(stick)}px`);
       setVar(el, "--enter", `${enter}px`);
       setVar(el, "--step-h", `${enter + cardH + anim}px`);
@@ -132,7 +203,7 @@ export class Director {
       if (card && s.kind !== "hero") {
         if (mobile) {
           const gap = parseFloat(getComputedStyle(el).paddingTop) || H;
-          a = top - H * 0.35; // the previous card has mostly left the screen
+          a = top - H * 0.2; // the previous card has left the screen
           b = top + gap - H * 0.75; // this card is just coming up from the bottom
         } else {
           const stick = parseFloat(el.style.getPropertyValue("--stick")) || 0;
@@ -142,17 +213,16 @@ export class Director {
         }
       }
       this.pins[i] = [a, b];
-      if (prev && a > prev.y) this.keys.push({ ...prev, step: i, y: a, hold: true });
+      // the previous view holds (with its own framing) until this card locks and the flight begins
+      if (prev && a > prev.y) this.keys.push({ ...prev, y: a, hold: true });
       const n = s.cams.length;
+      const tl = plans[i];
       s.cams.forEach((c, j) => {
-        const pos = this.proj.place(c.at);
-        if (c.off) {
-          pos.x += c.off[0];
-          pos.z -= c.off[1];
-          pos.y = Math.max(this.world.heightAt(pos.x, pos.z), 0);
-        }
-        const k: Key = { step: i, y: b > a ? a + ((b - a) * (j + 1)) / n : a, cam: c, pos };
+        const pos = targets[i][j];
+        const k: Key = { step: i, y: b > a ? a + (b - a) * tl[j].arrive : a, cam: c, pos };
         this.keys.push(k);
+        // rest at this place before flying on to the next one
+        if (j < n - 1 && b > a) this.keys.push({ ...k, y: a + (b - a) * tl[j].leave, hold: true });
         prev = k;
       });
     });
@@ -224,9 +294,10 @@ export class Director {
     this.want.yaw += this.look.x * 4 * DEG;
     this.want.pitch += this.look.y * 2 * DEG;
 
-    // ease the real camera toward the wanted one (critically damped feel)
-    const k = this.reduced ? 1 : 1 - Math.exp(-dt * 4.2);
+    // ease the real camera toward the wanted one; catch up faster when it has fallen far behind
     const c = this.cur;
+    const behind = Math.min(1, c.t.distanceTo(this.want.t) / Math.exp(c.logd));
+    const k = this.reduced ? 1 : 1 - Math.exp(-dt * 4.2 * (1 + 3 * behind));
     c.t.lerp(this.want.t, k);
     c.logd += (this.want.logd - c.logd) * k;
     c.pitch += (this.want.pitch - c.pitch) * k;
@@ -237,15 +308,18 @@ export class Director {
 
     // routes and arcs for the active step
     const want = new Map<RouteLine, number>();
+    const pRef = this.toRef(act, this.stepProgress);
+    const arrive = Director.timeline(step.cams.length)[step.cams.length - 1].arrive;
     for (const r of step.routes ?? []) {
       const line = this.routes.route(r.id, r.style);
-      const span = r.span ?? (step.cams.length > 1 ? [0.3, 0.95] : [0.15, 0.9]);
-      want.set(line, r.draw === "full" ? 1 : smooth(span[0], span[1], this.stepProgress));
+      // by default a route draws once the camera has reached the stop's last place; "full" draws during the flight
+      const span = r.draw === "full" ? [0.02, 0.6] : (r.span ?? [arrive, 0.97]);
+      want.set(line, smooth(span[0], Math.min(Math.max(span[1], span[0] + 0.05), 0.985), pRef));
     }
     for (const a of step.arcs ?? []) {
       const line = this.routes.arc(a);
-      const d0 = a.delay ?? 0.2;
-      want.set(line, smooth(d0, d0 + 0.28, this.stepProgress));
+      const d0 = a.delay ?? arrive;
+      want.set(line, smooth(d0, Math.min(d0 + 0.22, 0.985), pRef));
     }
     for (const line of this.routes.lines.values()) {
       const w = want.get(line);
@@ -272,7 +346,7 @@ export class Director {
       [...this.routes.lines.values()].some((r) => Math.abs(r.opacity - r.targetOpacity) > 0.01 || Math.abs(r.draw - r.targetDraw) > 0.002);
     if (moving) this.lastMotion = now;
     this.world.busy = now - this.lastMotion < 700;
-    this.movers?.(step, this.stepProgress, dt);
+    this.movers?.(step, pRef, dt);
     this.labels.update(this.world.camera, W, H);
   }
 
@@ -296,28 +370,51 @@ export class Director {
   }
 }
 
-/** Blend two camera states; long hops pull the camera back and tilt it down, then swing in to the next place. */
+const RHO = 1.42;
+
+/**
+ * The smooth zoom-out, pan, zoom-in path between two views (van Wijk & Nuij, "Smooth and efficient zooming and
+ * panning", 2003): w0 and w1 are the start and end viewing distances, u1 the pan distance, s the progress (0..1).
+ * Returns how far along the pan to be (0..1) and the viewing distance, such that motion looks steady on screen.
+ */
+function flightPath(w0: number, w1: number, u1: number, s: number): { u: number; w: number } {
+  if (u1 < 1e-4 * (w0 + w1)) return { u: s, w: w0 * Math.pow(w1 / w0, s) };
+  const r = (i: 0 | 1) => {
+    const wi = i ? w1 : w0;
+    const b = (w1 * w1 - w0 * w0 + (i ? -1 : 1) * RHO ** 4 * u1 * u1) / (2 * wi * RHO * RHO * u1);
+    return Math.log(-b + Math.sqrt(b * b + 1));
+  };
+  const r0 = r(0);
+  const r1 = r(1);
+  const S = (r1 - r0) / RHO;
+  const x = RHO * s * S + r0;
+  const u = ((w0 / (RHO * RHO)) * (Math.cosh(r0) * Math.tanh(x) - Math.sinh(r0))) / u1;
+  const w = (w0 * Math.cosh(r0)) / Math.cosh(x);
+  return { u: Math.min(Math.max(u, 0), 1), w };
+}
+
+/** Length of the flight path in "screens of motion": the amount of perceived movement between two views. */
+function flightLength(w0: number, w1: number, u1: number): number {
+  if (u1 < 1e-4 * (w0 + w1)) return Math.abs(Math.log(w1 / w0)) / RHO;
+  const r = (i: 0 | 1) => {
+    const wi = i ? w1 : w0;
+    const b = (w1 * w1 - w0 * w0 + (i ? -1 : 1) * RHO ** 4 * u1 * u1) / (2 * wi * RHO * RHO * u1);
+    return Math.log(-b + Math.sqrt(b * b + 1));
+  };
+  return (r(1) - r(0)) / RHO;
+}
+
+/** Blend two camera states along the flight path; big pull-backs also tilt the camera down a little at the apex. */
 function blend(A: CamState, B: CamState, e: number): CamState {
-  const D = Math.hypot(B.t.x - A.t.x, B.t.z - A.t.z);
-  const dA = Math.exp(A.logd);
-  const dB = Math.exp(B.logd);
-  const dMid = Math.max(dA, dB, D * 0.8);
-  const hop = dMid > Math.max(dA, dB) * 1.1;
-  let logd: number;
-  // pan speed follows altitude: while low, the target barely moves, so flights climb, travel, then descend
-  let te = dB > dA * 2 ? e * e : dA > dB * 2 ? 1 - (1 - e) * (1 - e) : e;
-  let bump = 0;
-  if (hop) {
-    const lm = Math.log(dMid);
-    logd = (1 - e) * (1 - e) * A.logd + 2 * e * (1 - e) * lm + e * e * B.logd;
-    te = smooth(0.08, 0.92, e);
-    bump = Math.min(14 * DEG, (80 * DEG - Math.max(A.pitch, B.pitch)) * 0.5) * 4 * e * (1 - e);
-  } else {
-    logd = A.logd + (B.logd - A.logd) * e;
-  }
+  const w0 = Math.exp(A.logd);
+  const w1 = Math.exp(B.logd);
+  const D = A.t.distanceTo(B.t);
+  const { u, w } = flightPath(w0, w1, D, e);
+  const apex = Math.max(w / Math.max(w0, w1), 1);
+  const bump = Math.min(14 * DEG, (80 * DEG - Math.max(A.pitch, B.pitch)) * 0.5) * Math.min(1, Math.log(apex) / 1.5) * 4 * e * (1 - e);
   return {
-    t: A.t.clone().lerp(B.t, te),
-    logd,
+    t: A.t.clone().lerp(B.t, u),
+    logd: Math.log(w),
     pitch: A.pitch + (B.pitch - A.pitch) * e + bump,
     yaw: A.yaw + wrapAngle(B.yaw - A.yaw) * e,
     ox: A.ox + (B.ox - A.ox) * e,

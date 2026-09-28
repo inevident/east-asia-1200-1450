@@ -167,23 +167,15 @@ try {
   };
   addEventListener("scroll", checkCovered, { passive: true });
   checkCovered();
-  Object.assign(window, { world, director });
+  Object.assign(window, { world, director, lenis });
   // dev/QA: jump straight to a camera stop (?step=<id>&k=<key>, or window.__goto(id, key) from tools/cdp-shot.mjs)
   if (import.meta.env.DEV) {
     const go = (id: string, k = 0) => {
       const i = STEPS.findIndex((s) => s.id === id);
-      // the stop's own keys (not the hold that keeps the previous view until its card locks); fractional k lands
-      // between two of them, and k = -1 is the moment the card locks, before the flight starts
-      const own = director.keys.map((kk, idx) => ({ kk, idx })).filter(({ kk }) => kk.step === i && !kk.hold);
-      if (!own.length) return false;
-      const [pa] = director.pins[i];
-      let y: number;
-      if (k < 0) y = pa + 1;
-      else {
-        const lo = own[Math.min(Math.floor(k), own.length - 1)];
-        const next = director.keys[Math.min(lo.idx + 1, director.keys.length - 1)];
-        y = lo.kk.y + (next.y - lo.kk.y) * (k - Math.floor(k));
-      }
+      if (i < 0) return false;
+      // k = progress through the stop's locked stretch (0 = card just locked, 1 = released); negative = before the lock
+      const [pa, pb] = director.pins[i];
+      const y = pa + (pb - pa) * k;
       lenis?.scrollTo(y, { immediate: true, force: true });
       scrollTo(0, y);
       director.snap();

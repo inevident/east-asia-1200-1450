@@ -6,7 +6,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const args = process.argv.slice(2);
-const opt = (k, d) => (args.find((a) => a.startsWith(`--${k}=`)) ?? `--${k}=${d}`).split("=")[1];
+const opt = (k, d) => {
+  const a = args.find((x) => x.startsWith(`--${k}=`)) ?? `--${k}=${d}`;
+  return a.slice(a.indexOf("=") + 1);
+};
 const [W, H] = opt("size", "1440x900").split("x").map(Number);
 const WAIT = Number(opt("wait", "2200"));
 const BASE = opt("url", "http://127.0.0.1:5173/");
@@ -60,9 +63,16 @@ for (let i = 0; i < 150; i++) {
 await sleep(1500);
 mkdirSync(".snaps", { recursive: true });
 for (const s of shots) {
-  const [spec, name] = s.split("=");
+  const eq = s.lastIndexOf("=");
+  const spec = eq >= 0 ? s.slice(0, eq) : s;
+  const name = eq >= 0 ? s.slice(eq + 1) : undefined;
   const [step, key = "0"] = spec.split(/:(?=-?[\d.]+$)/);
-  const ok = step.startsWith("#")
+  // "@selector" clicks an element (a rail link, say) and waits for the page's own smooth scroll to finish
+  if (step.startsWith("@")) {
+    await evaluate(`document.querySelector(${JSON.stringify(step.slice(1))}).click()`);
+    await sleep(5500);
+  }
+  const ok = step.startsWith("@") ? true : step.startsWith("#")
     ? await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(step)}); if (!el) return false; window.scrollTo(0, el.getBoundingClientRect().top + scrollY + ${Number(key)}); return true; })()`)
     : await evaluate(`window.__goto(${JSON.stringify(step)}, ${Number(key)})`);
   if (!ok) {
@@ -75,6 +85,12 @@ for (const s of shots) {
     const fps = await evaluate(`new Promise((res) => { const w = window.world; const n0 = w.drawn; const t0 = performance.now(); setTimeout(() => res(Math.round((w.drawn - n0) / ((performance.now() - t0) / 1000))), 3000); })`);
     console.log(`${spec}: map draws ~${fps} frames/s while idle`);
   }
+  if (args.includes("--probe")) {
+    const info = await evaluate(`(() => { const d = window.director; return JSON.stringify({ active: d.steps[d.active].id, progress: +d.stepProgress.toFixed(2), y: scrollY, labels: [...document.querySelectorAll('.lbl.is-on:not(.is-off)')].map((e) => e.textContent.trim().slice(0, 18)) }); })()`);
+    console.log(`${spec}: ${info}`);
+  }
+  const ev = opt("eval", "");
+  if (ev) console.log(`${spec} eval:`, JSON.stringify(await evaluate(ev)));
   const shot = await send("Page.captureScreenshot", { format: "png" });
   const file = `.snaps/${name ?? `${step}-${key}`}.png`;
   writeFileSync(file, Buffer.from(shot.result.data, "base64"));

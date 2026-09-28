@@ -32,7 +32,11 @@ export interface RouteRef {
   style: RouteStyle;
   /** "scroll" draws the line as the reader scrolls through the step */
   draw?: "scroll" | "full";
-  /** part of the step's animation (0..1, while its card is locked) during which the line draws */
+  /**
+   * Part of the stop's locked stretch (0..1) during which the line draws. The camera reaches each place at these
+   * points: one place 0.67 | two 0.35 (rests to 0.48), 0.83 | three 0.23 (0.33), 0.56 (0.65), 0.88 | four 0.18, 0.42, 0.67, 0.91.
+   * Default: once the camera has reached the last place.
+   */
   span?: [number, number];
 }
 export interface Arc {
@@ -41,7 +45,7 @@ export interface Arc {
   style: RouteStyle;
   /** height of the arc's apex as a fraction of its length */
   lift?: number;
-  /** point in the step's animation (0..1, while its card is locked) at which this arc starts drawing */
+  /** point in the stop's locked stretch (0..1) at which this arc starts drawing; default: when the camera has arrived */
   delay?: number;
 }
 export type MoverKind = "fleet" | "junks" | "caravan" | "barges";
@@ -50,7 +54,7 @@ export interface Mover {
   route: string;
   /** follow the reader's scroll through the step, or loop continuously */
   mode: "scroll" | "loop";
-  /** part of the step's animation during which a "scroll" mover travels its route */
+  /** part of the stop's locked stretch during which a "scroll" mover travels its route */
   span?: [number, number];
 }
 
@@ -127,10 +131,10 @@ export const STEPS: Step[] = [
     cams: [cam([92, 27], 1320, 60, 0)],
     labels: [REG.song, REG.jin, REG.goryeo, REG.japan, REG.daiviet, REG.champa, REG.steppe, REG.tibet, REG.islam, REG.india, SEAS.indian, SEAS.scs],
     routes: [
-      { id: "silk", style: "land", draw: "scroll", span: [0.1, 0.85] },
-      { id: "sea", style: "sea", draw: "scroll", span: [0.1, 0.85] },
-      { id: "sea_west", style: "sea", draw: "scroll", span: [0.1, 0.85] },
-      { id: "swahili", style: "sea", draw: "scroll", span: [0.1, 0.85] },
+      { id: "silk", style: "land", draw: "scroll" },
+      { id: "sea", style: "sea", draw: "scroll" },
+      { id: "sea_west", style: "sea", draw: "scroll" },
+      { id: "swahili", style: "sea", draw: "scroll" },
     ],
   },
 
@@ -170,7 +174,7 @@ export const STEPS: Step[] = [
       L("shangdu", "Shangdu", "Khubilai’s summer capital", "city", "e"),
       L("dadu", "Dadu (Beijing)", "Yuan capital, 1271–1368", "city", "e"),
     ],
-    routes: [{ id: "steppe", style: "land", draw: "scroll", span: [0.12, 0.55] }],
+    routes: [{ id: "steppe", style: "land", draw: "scroll", span: [0.21, 0.34] }],
     focus: ["dadu"],
   },
   {
@@ -185,8 +189,8 @@ export const STEPS: Step[] = [
       ...INDIAN_OCEAN_PORTS.filter((l) => l.at !== "quanzhou" && l.at !== "guangzhou"),
       SEAS.indian,
     ],
-    routes: [{ id: "zhenghe", style: "fleet", draw: "scroll", span: [0.58, 0.98] }],
-    movers: [{ kind: "fleet", route: "zhenghe", mode: "scroll", span: [0.58, 0.98] }],
+    routes: [{ id: "zhenghe", style: "fleet", draw: "scroll", span: [0.74, 0.97] }],
+    movers: [{ kind: "fleet", route: "zhenghe", mode: "scroll", span: [0.74, 0.97] }],
     focus: ["nanjing", "liujiagang"],
   },
   {
@@ -207,8 +211,8 @@ export const STEPS: Step[] = [
       REG.daiviet,
     ],
     routes: [
-      { id: "invasion_japan", style: "war", draw: "scroll", span: [0.15, 0.6] },
-      { id: "invasion_vietnam", style: "war", draw: "scroll", span: [0.72, 0.98] },
+      { id: "invasion_japan", style: "war", draw: "scroll", span: [0.21, 0.34] },
+      { id: "invasion_vietnam", style: "war", draw: "scroll", span: [0.86, 0.97] },
     ],
     focus: ["hakata", "bachdang", "kamakura"],
   },
@@ -241,9 +245,9 @@ export const STEPS: Step[] = [
       L("thanglong", "Vietnam", undefined, "city", "w"),
     ],
     arcs: [
-      { from: "bailudong", to: "hanseong", style: "idea", delay: 0.58 },
-      { from: "bailudong", to: "kyoto", style: "idea", delay: 0.64 },
-      { from: "bailudong", to: "thanglong", style: "idea", delay: 0.7 },
+      { from: "bailudong", to: "hanseong", style: "idea", delay: 0.74 },
+      { from: "bailudong", to: "kyoto", style: "idea", delay: 0.79 },
+      { from: "bailudong", to: "thanglong", style: "idea", delay: 0.84 },
     ],
     focus: ["bailudong"],
   },
@@ -258,7 +262,7 @@ export const STEPS: Step[] = [
       L("hangzhou", "Hangzhou", undefined, "city", "e"),
       L("cheongju", "Cheongju", "Jikji printed with metal type, 1377", "event", "e"),
     ],
-    arcs: [{ from: "hangzhou", to: "cheongju", style: "idea", delay: 0.08 }],
+    arcs: [{ from: "hangzhou", to: "cheongju", style: "idea", delay: 0.33 }],
     focus: ["cheongju"],
   },
   {
@@ -273,7 +277,7 @@ export const STEPS: Step[] = [
       REG.ilkhanate,
       REG.yuan,
     ],
-    arcs: [{ from: "maragheh", to: "dadu", style: "idea", lift: 0.12, delay: 0.12 }],
+    arcs: [{ from: "maragheh", to: "dadu", style: "idea", lift: 0.12, delay: 0.33 }],
     focus: ["maragheh", "dadu"],
   },
   {
@@ -314,9 +318,9 @@ export const STEPS: Step[] = [
       SEAS.ecs,
     ],
     arcs: [
-      { from: "ningbo", to: "kaesong", style: "idea", delay: 0.15 },
-      { from: "ningbo", to: "hakata", style: "idea", delay: 0.25 },
-      { from: "hakata", to: "kamakura", style: "idea", delay: 0.4 },
+      { from: "ningbo", to: "kaesong", style: "idea", delay: 0.64 },
+      { from: "ningbo", to: "hakata", style: "idea", delay: 0.69 },
+      { from: "hakata", to: "kamakura", style: "idea", delay: 0.76 },
     ],
   },
   {
@@ -352,7 +356,7 @@ export const STEPS: Step[] = [
       L("dadu", "Dadu", "Yuan court", "city", "e"),
       REG.tibet,
     ],
-    arcs: [{ from: "sakya", to: "dadu", style: "idea", delay: 0.62 }],
+    arcs: [{ from: "sakya", to: "dadu", style: "idea", delay: 0.8 }],
     focus: ["quanzhou", "sakya"],
   },
   {
@@ -393,12 +397,12 @@ export const STEPS: Step[] = [
       L("calicut", "Calicut", undefined, "city", "e"),
     ],
     arcs: [
-      { from: "kashan", to: "jingdezhen", style: "goods", lift: 0.1, delay: 0.55 },
-      { from: "jingdezhen", to: "quanzhou", style: "goods", lift: 0.25, delay: 0.66 },
+      { from: "kashan", to: "jingdezhen", style: "goods", lift: 0.1, delay: 0.74 },
+      { from: "jingdezhen", to: "quanzhou", style: "goods", lift: 0.25, delay: 0.8 },
     ],
     routes: [
-      { id: "sea", style: "sea", draw: "scroll", span: [0.7, 0.98] },
-      { id: "sea_west", style: "sea", draw: "scroll", span: [0.7, 0.98] },
+      { id: "sea", style: "sea", draw: "scroll", span: [0.84, 0.97] },
+      { id: "sea_west", style: "sea", draw: "scroll", span: [0.84, 0.97] },
     ],
     focus: ["jingdezhen"],
   },
@@ -437,7 +441,7 @@ export const STEPS: Step[] = [
       L("terraces", "Terraced hills", undefined, "site", "e"),
       REG.champa,
     ],
-    arcs: [{ from: "champa", to: [119.2, 32.9], style: "goods", lift: 0.2, delay: 0.1 }],
+    arcs: [{ from: "champa", to: [119.2, 32.9], style: "goods", lift: 0.2, delay: 0.33 }],
     focus: ["terraces"],
   },
   {
@@ -453,9 +457,9 @@ export const STEPS: Step[] = [
       L("baghdad", "Middle East", undefined, "city", "e"),
     ],
     arcs: [
-      { from: "kaifeng", to: "karakorum", style: "war", lift: 0.2, delay: 0.55 },
-      { from: "karakorum", to: "samarkand", style: "war", lift: 0.12, delay: 0.64 },
-      { from: "samarkand", to: "baghdad", style: "war", lift: 0.12, delay: 0.73 },
+      { from: "kaifeng", to: "karakorum", style: "war", lift: 0.2, delay: 0.74 },
+      { from: "karakorum", to: "samarkand", style: "war", lift: 0.12, delay: 0.8 },
+      { from: "samarkand", to: "baghdad", style: "war", lift: 0.12, delay: 0.86 },
     ],
     focus: ["kaifeng"],
   },
@@ -504,7 +508,7 @@ export const STEPS: Step[] = [
       L("dadu", "Dadu", "Yuan paper currency", "city", "e"),
       L("tabriz", "Tabriz", "Ilkhanate paper money fails, 1294", "event", "e"),
     ],
-    arcs: [{ from: "dadu", to: "tabriz", style: "goods", lift: 0.1, delay: 0.7 }],
+    arcs: [{ from: "dadu", to: "tabriz", style: "goods", lift: 0.1, delay: 0.84 }],
     focus: ["chengdu", "dadu"],
   },
   {
@@ -519,8 +523,8 @@ export const STEPS: Step[] = [
       L("linqing", "Linqing", undefined, "city", "e"),
       L("dadu", "Dadu", "northern end", "city", "e"),
     ],
-    routes: [{ id: "canal", style: "canal", draw: "scroll", span: [0.05, 0.97] }],
-    movers: [{ kind: "barges", route: "canal", mode: "scroll", span: [0.05, 0.97] }],
+    routes: [{ id: "canal", style: "canal", draw: "scroll", span: [0.05, 0.9] }],
+    movers: [{ kind: "barges", route: "canal", mode: "scroll", span: [0.05, 0.9] }],
     focus: ["hangzhou", "dadu"],
   },
   {
@@ -531,9 +535,9 @@ export const STEPS: Step[] = [
     cams: [cam("quanzhou", 9, 32, 18, [0.4, -0.5]), cam([88, 10], 1150, 62, 0)],
     labels: [...INDIAN_OCEAN_PORTS, L("cairo", "Cairo", undefined, "city", "e"), SEAS.indian, SEAS.arabian],
     routes: [
-      { id: "sea", style: "sea", draw: "scroll", span: [0.58, 0.98] },
-      { id: "sea_west", style: "sea", draw: "scroll", span: [0.58, 0.98] },
-      { id: "swahili", style: "sea", draw: "scroll", span: [0.58, 0.98] },
+      { id: "sea", style: "sea", draw: "scroll", span: [0.74, 0.97] },
+      { id: "sea_west", style: "sea", draw: "scroll", span: [0.74, 0.97] },
+      { id: "swahili", style: "sea", draw: "scroll", span: [0.74, 0.97] },
     ],
     movers: [{ kind: "junks", route: "sea", mode: "loop" }],
     focus: ["quanzhou"],
@@ -555,10 +559,10 @@ export const STEPS: Step[] = [
       L("baghdad", "Baghdad", undefined, "city", "s"),
     ],
     routes: [
-      { id: "silk", style: "land", draw: "scroll", span: [0.35, 0.97] },
-      { id: "steppe", style: "land", draw: "scroll", span: [0.35, 0.97] },
+      { id: "silk", style: "land", draw: "scroll", span: [0.5, 0.95] },
+      { id: "steppe", style: "land", draw: "scroll", span: [0.5, 0.95] },
     ],
-    movers: [{ kind: "caravan", route: "silk", mode: "scroll", span: [0.35, 0.97] }],
+    movers: [{ kind: "caravan", route: "silk", mode: "scroll", span: [0.5, 0.95] }],
     focus: ["dunhuang"],
   },
   {
@@ -625,11 +629,11 @@ export const STEPS: Step[] = [
       L("kaffa", "to the Black Sea", undefined, "city", "e"),
     ],
     arcs: [
-      { from: "kaifeng", to: "hangzhou", style: "war", lift: 0.25, delay: 0.1 },
-      { from: "samarkand", to: "dadu", style: "plague", lift: 0.1, delay: 0.6 },
-      { from: "samarkand", to: "kaffa", style: "plague", lift: 0.1, delay: 0.64 },
+      { from: "kaifeng", to: "hangzhou", style: "war", lift: 0.25, delay: 0.34 },
+      { from: "samarkand", to: "dadu", style: "plague", lift: 0.1, delay: 0.8 },
+      { from: "samarkand", to: "kaffa", style: "plague", lift: 0.1, delay: 0.85 },
     ],
-    routes: [{ id: "silk", style: "plague", draw: "scroll", span: [0.6, 0.98] }],
+    routes: [{ id: "silk", style: "plague", draw: "scroll", span: [0.76, 0.97] }],
   },
   {
     id: "social-synth",
