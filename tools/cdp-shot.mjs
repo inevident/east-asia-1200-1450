@@ -61,7 +61,7 @@ await sleep(1500);
 mkdirSync(".snaps", { recursive: true });
 for (const s of shots) {
   const [spec, name] = s.split("=");
-  const [step, key = "0"] = spec.split(/:(?=[\d.]+$)/);
+  const [step, key = "0"] = spec.split(/:(?=-?[\d.]+$)/);
   const ok = step.startsWith("#")
     ? await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(step)}); if (!el) return false; window.scrollTo(0, el.getBoundingClientRect().top + scrollY + ${Number(key)}); return true; })()`)
     : await evaluate(`window.__goto(${JSON.stringify(step)}, ${Number(key)})`);

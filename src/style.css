@@ -497,19 +497,18 @@ strong {
   position: relative;
   z-index: 3;
 }
+/* each stop: a gap, then its card, which locks in place (sticky) while the stop's animation plays */
 .step {
   position: relative;
-  min-height: 135vh;
-  display: flex;
-  align-items: center;
-  padding: 18vh 0;
+  display: block;
+  height: var(--step-h, auto);
   pointer-events: none;
-}
-.step[style*="--keys"] {
-  min-height: calc(95vh * var(--keys) + 40vh);
 }
 .step .card {
   pointer-events: auto;
+  position: sticky;
+  top: var(--stick, 12vh);
+  margin-top: var(--enter, 45vh);
 }
 
 .card {
@@ -523,14 +522,6 @@ strong {
   border: 1px solid rgba(205, 189, 159, 0.9);
   border-radius: var(--radius);
   box-shadow: var(--shadow), 0 30px 60px -30px rgba(40, 25, 10, 0.5);
-  opacity: 0.35;
-  transform: translateY(18px);
-  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
-}
-.step.is-active .card,
-.no-map .card {
-  opacity: 1;
-  transform: none;
 }
 /* the card's top and bottom edges look torn from a scroll */
 .card::before,
@@ -1452,13 +1443,15 @@ strong {
   .card--wide {
     --card-w: calc(100vw - 24px);
   }
-  .step {
-    min-height: 150vh;
-    align-items: flex-end;
-    padding: 70vh 0 12vh;
+  /* phones: the card covers the map, so each stop's flight plays in a map-only gap before its card */
+  .step:not(.step--hero) {
+    height: auto;
+    padding: var(--gap, 110vh) 0 8vh;
   }
-  .step[style*="--keys"] {
-    min-height: calc(100vh * var(--keys) + 60vh);
+  .step .card {
+    position: relative;
+    top: auto;
+    margin-top: 0;
   }
   .card {
     padding: 20px 18px 18px;

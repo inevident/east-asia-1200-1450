@@ -19,6 +19,8 @@ interface Key {
   y: number; // scroll position at which this key is exactly reached
   cam: Cam;
   pos: THREE.Vector3;
+  /** a copy of the previous view that holds the camera still until this stop's animation begins */
+  hold?: boolean;
 }
 
 const DEG = Math.PI / 180;
@@ -27,10 +29,17 @@ const smooth = (e0: number, e1: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 const wrapAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
+/** Set a CSS custom property only when it changes (layout runs often; avoid needless style recalcs). */
+const setVar = (el: HTMLElement, name: string, value: string) => {
+  if (el.style.getPropertyValue(name) !== value) el.style.setProperty(name, value);
+};
 
 /**
- * Scroll-driven camera: each story step's section defines one or more camera keys; scrolling between keys
- * flies the camera along an arc that pulls back for long hops (like a bird's-eye "hop" between places).
+ * Scroll-driven camera. Each stop's text card scrolls in and then locks in place (sticky) once it is fully on
+ * screen, or once the reader has reached its end if it is taller than the screen. While it is locked, scrolling plays
+ * that stop's animation: the camera flies there (pulling back for long hops) and its routes and arcs draw. Then the
+ * card is released and scrolls away; the camera holds still while cards come and go. On phones, where the card
+ * covers the map, the animation plays in the map-only gap before each card instead.
  */
 export class Director {
   world: World;
@@ -38,8 +47,8 @@ export class Director {
   steps: Step[];
   sections: HTMLElement[];
   keys: Key[] = [];
-  tops: number[] = [];
-  heights: number[] = [];
+  /** scroll range in which each stop's animation plays */
+  pins: [number, number][] = [];
   labels: Labels;
   routes: Routes;
   cur!: CamState;
@@ -78,26 +87,73 @@ export class Director {
     new ResizeObserver(() => this.layout()).observe(document.body);
   }
 
-  /** Scroll positions for every camera key (a key is reached when its point in the section crosses mid-screen). */
+  /** Scroll position that shows a stop with its animation finished and its card locked in view. */
+  landing(id: string): number | null {
+    const i = this.steps.findIndex((s) => s.id === id);
+    if (i < 0) return null;
+    this.layout();
+    return this.pins[i][1];
+  }
+
+  /** Size each stop's section around its card, then place the camera keys inside each stop's animation range. */
   layout() {
     const H = innerHeight;
-    this.keys = [];
+    const mobile = innerWidth <= 760;
+    const cards = this.sections.map((el) => el.querySelector(".card") as HTMLElement | null);
+    // 1) sizes: [gap] [card] [locked stretch that plays the animation]
     this.steps.forEach((s, i) => {
       const el = this.sections[i];
+      const card = cards[i];
+      if (!card || s.kind === "hero") return;
+      const anim = Math.round(H * (0.75 * s.cams.length + 0.35));
+      if (mobile) {
+        setVar(el, "--gap", `${anim + Math.round(H * 0.55)}px`);
+        return;
+      }
+      const cardH = card.offsetHeight;
+      const margin = H * 0.08;
+      // short cards lock a little above centre; tall ones lock once their last line is on screen
+      const stick = cardH <= H - 2 * margin ? Math.max(margin, (H - cardH) * 0.42) : H - cardH - margin;
+      const enter = Math.round(H * 0.45);
+      setVar(el, "--stick", `${Math.round(stick)}px`);
+      setVar(el, "--enter", `${enter}px`);
+      setVar(el, "--step-h", `${enter + cardH + anim}px`);
+    });
+    // 2) where each stop's animation starts and ends, and the camera keys within it
+    this.keys = [];
+    this.pins = [];
+    let prev: Key | null = null;
+    this.steps.forEach((s, i) => {
+      const el = this.sections[i];
+      const card = cards[i];
       const top = el.getBoundingClientRect().top + scrollY;
-      const h = el.offsetHeight;
-      this.tops[i] = top;
-      this.heights[i] = h;
+      let a = top;
+      let b = top;
+      if (card && s.kind !== "hero") {
+        if (mobile) {
+          const gap = parseFloat(getComputedStyle(el).paddingTop) || H;
+          a = top - H * 0.35; // the previous card has mostly left the screen
+          b = top + gap - H * 0.75; // this card is just coming up from the bottom
+        } else {
+          const stick = parseFloat(el.style.getPropertyValue("--stick")) || 0;
+          const enter = parseFloat(el.style.getPropertyValue("--enter")) || 0;
+          a = top + enter - stick; // the card locks in place here...
+          b = top + el.offsetHeight - card.offsetHeight - stick; // ...and is released here
+        }
+      }
+      this.pins[i] = [a, b];
+      if (prev && a > prev.y) this.keys.push({ ...prev, step: i, y: a, hold: true });
       const n = s.cams.length;
       s.cams.forEach((c, j) => {
-        const frac = n === 1 ? 0.5 : 0.18 + (0.64 * j) / (n - 1);
         const pos = this.proj.place(c.at);
         if (c.off) {
           pos.x += c.off[0];
           pos.z -= c.off[1];
           pos.y = Math.max(this.world.heightAt(pos.x, pos.z), 0);
         }
-        this.keys.push({ step: i, y: top + h * frac - H / 2, cam: c, pos });
+        const k: Key = { step: i, y: b > a ? a + ((b - a) * (j + 1)) / n : a, cam: c, pos };
+        this.keys.push(k);
+        prev = k;
       });
     });
     this.lastLayout = performance.now();
@@ -129,7 +185,7 @@ export class Director {
     const B = this.camOf(K[i + 1]);
     const f = (y - K[i].y) / Math.max(K[i + 1].y - K[i].y, 1);
     if (this.reduced) return f < 0.5 ? A : B;
-    const e = smooth(0.2, 0.8, f);
+    const e = smooth(0.03, 0.97, f);
     return blend(A, B, e);
   }
 
@@ -146,11 +202,11 @@ export class Director {
     const y = scrollY;
     this.want = this.stateAt(y);
 
-    // which step is under mid-screen, and how far through it
-    const mid = y + H / 2;
+    // the current stop is the latest one whose animation has begun; progress runs 0 to 1 while its card is locked
     let act = 0;
-    for (let i = 0; i < this.tops.length; i++) if (mid >= this.tops[i]) act = i;
-    this.stepProgress = Math.min(Math.max((mid - this.tops[act]) / Math.max(this.heights[act], 1), 0), 1);
+    for (let i = 0; i < this.pins.length; i++) if (y >= this.pins[i][0] - 1) act = i;
+    const [pa, pb] = this.pins[act];
+    this.stepProgress = pb > pa ? Math.min(Math.max((y - pa) / (pb - pa), 0), 1) : 1;
     if (act !== this.active) {
       this.active = act;
       this.labels.set(this.steps[act].labels ?? []);
@@ -183,7 +239,7 @@ export class Director {
     const want = new Map<RouteLine, number>();
     for (const r of step.routes ?? []) {
       const line = this.routes.route(r.id, r.style);
-      const span = step.cams.length > 1 ? [0.45, 0.9] : [0.12, 0.72];
+      const span = r.span ?? (step.cams.length > 1 ? [0.3, 0.95] : [0.15, 0.9]);
       want.set(line, r.draw === "full" ? 1 : smooth(span[0], span[1], this.stepProgress));
     }
     for (const a of step.arcs ?? []) {

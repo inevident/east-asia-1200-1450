@@ -19,13 +19,15 @@ if (!reduced) {
   lenis = new Lenis({ lerp: 0.085, smoothWheel: true, wheelMultiplier: 0.9, autoRaf: true });
 }
 
+/** Set once the map is up: where to land so a stop shows its finished animation with its card locked in view. */
+let landingFor: ((id: string) => number | null) | null = null;
+
 function scrollToHash(hash: string) {
   const target = document.querySelector(hash) as HTMLElement | null;
   if (!target) return;
-  // land on the section's centre so the camera arrives at that stop
   const r = target.getBoundingClientRect();
-  const isStep = target.classList.contains("step");
-  const y = scrollY + r.top + (isStep && target.offsetHeight > innerHeight ? target.offsetHeight / 2 - innerHeight / 2 : 0);
+  const land = target.classList.contains("step") && landingFor ? landingFor(target.id) : null;
+  const y = land ?? scrollY + r.top;
   const dist = Math.abs(y - scrollY);
   if (lenis) lenis.scrollTo(y, { duration: Math.min(1.2 + dist / 9000, 4.5) });
   else scrollTo({ top: y, behavior: reduced ? "auto" : "smooth" });
@@ -145,6 +147,7 @@ try {
   const proj = makeProjector(world.geo, world.heightAt);
   const director = new Director(world, proj, STEPS, document.getElementById("labels")!);
   director.onStep = markStep;
+  landingFor = (id) => director.landing(id);
   const movers = new Movers(world, director.routes);
   director.movers = (step, p, dt) => movers.update(step, p, dt);
   world.onFrame.push((dt) => director.update(dt));
@@ -169,13 +172,18 @@ try {
   if (import.meta.env.DEV) {
     const go = (id: string, k = 0) => {
       const i = STEPS.findIndex((s) => s.id === id);
-      const base = director.keys.findIndex((kk) => kk.step === i);
-      if (base < 0) return false;
-      // fractional k lands between this key and the next one (for checking camera flights)
-      const a = director.keys[base + Math.floor(k)];
-      const b = director.keys[Math.min(base + Math.floor(k) + 1, director.keys.length - 1)];
-      if (!a) return false;
-      const y = a.y + (b.y - a.y) * (k - Math.floor(k));
+      // the stop's own keys (not the hold that keeps the previous view until its card locks); fractional k lands
+      // between two of them, and k = -1 is the moment the card locks, before the flight starts
+      const own = director.keys.map((kk, idx) => ({ kk, idx })).filter(({ kk }) => kk.step === i && !kk.hold);
+      if (!own.length) return false;
+      const [pa] = director.pins[i];
+      let y: number;
+      if (k < 0) y = pa + 1;
+      else {
+        const lo = own[Math.min(Math.floor(k), own.length - 1)];
+        const next = director.keys[Math.min(lo.idx + 1, director.keys.length - 1)];
+        y = lo.kk.y + (next.y - lo.kk.y) * (k - Math.floor(k));
+      }
       lenis?.scrollTo(y, { immediate: true, force: true });
       scrollTo(0, y);
       director.snap();

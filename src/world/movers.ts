@@ -84,7 +84,7 @@ export class Movers {
       const c = this.convoy(m.kind, m.route);
       active.add(`${m.kind}:${m.route}`);
       if (m.mode === "scroll") {
-        const span = step.cams.length > 1 ? [0.45, 0.9] : [0.12, 0.72];
+        const span = m.span ?? (step.cams.length > 1 ? [0.3, 0.95] : [0.15, 0.9]);
         const f = Math.min(Math.max((progress - span[0]) / (span[1] - span[0]), 0), 1);
         c.t += (f - c.t) * (1 - Math.exp(-dt * 6));
       } else {

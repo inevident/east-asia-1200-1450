@@ -256,8 +256,7 @@ function stepMarkup(s: Step, idx: number): string {
       break;
   }
   const letter = s.chapter !== undefined ? CHAPTERS[s.chapter].letter : "";
-  const tall = s.cams.length > 1 ? ` style="--keys:${s.cams.length}"` : "";
-  return `<section class="step step--${cls}" id="${s.id}" data-step="${idx}" data-letter="${letter}"${tall}>${inner}</section>`;
+  return `<section class="step step--${cls}" id="${s.id}" data-step="${idx}" data-letter="${letter}">${inner}</section>`;
 }
 
 function keyDates(): string {
